@@ -1,114 +1,194 @@
 #!/bin/bash
+# This file will be sourced in init.sh
+# Namespace functions with provisioning_
 
-# URL du fichier facefusion.zip
-FILE_URL="https://www.dropbox.com/scl/fi/azn75v9t3qtsf3a9zjcvt/facefusion.zip?rlkey=6cuhrx8cpux9nqp3ylqoosc17&dl=1"
+# https://raw.githubusercontent.com/ai-dock/stable-diffusion-webui/main/config/provisioning/default.sh
 
-# Installer les paquets nécessaires
-apt update
-apt install -y git-all curl unzip
-curl -LO https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-apt install -y ffmpeg
-apt-get install -y mesa-va-drivers
+### Edit the following arrays to suit your workflow - values must be quoted and separated by newlines or spaces.
 
-# Définir le chemin du workspace
-WORKSPACE_DIR="/workspace/facefusion"
+DISK_GB_REQUIRED=30
 
-# Fichier de log
-LOG_FILE="$WORKSPACE_DIR/setup.log"
+PIP_PACKAGES=(
 
-echo "Starting setup.sh" >> $LOG_FILE
-date >> $LOG_FILE
+)
 
-# Télécharger facefusion.zip
-echo "Downloading facefusion.zip" >> $LOG_FILE
-curl -L $FILE_URL -o /tmp/facefusion.zip
-echo "Download completed" >> $LOG_FILE
+EXTENSIONS=(
+    "https://github.com/Mikubill/sd-webui-controlnet"
+    "https://github.com/d8ahazard/sd_dreambooth_extension"
+    "https://github.com/deforum-art/sd-webui-deforum"
+    "https://github.com/adieyal/sd-dynamic-prompts"
+    "https://github.com/ototadana/sd-face-editor"
+    "https://github.com/AlUlkesh/stable-diffusion-webui-images-browser"
+    "https://github.com/hako-mikan/sd-webui-regional-prompter"
+    "https://github.com/Coyote-A/ultimate-upscale-for-automatic1111"
+    "https://github.com/Gourieff/sd-webui-reactor"
+)
 
-# Extraction de facefusion.zip
-echo "Extracting facefusion.zip" >> $LOG_FILE
-mkdir -p $WORKSPACE_DIR
-unzip /tmp/facefusion.zip -d $WORKSPACE_DIR
-echo "Extraction completed" >> $LOG_FILE
+CHECKPOINT_MODELS=(
+    "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
+    #"https://huggingface.co/stabilityai/stable-diffusion-2-1/resolve/main/v2-1_768-ema-pruned.ckpt"
+    #"https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors"
+    #"https://huggingface.co/stabilityai/stable-diffusion-xl-refiner-1.0/resolve/main/sd_xl_refiner_1.0.safetensors"
+)
 
-# Installation de Miniconda dans le workspace
-echo "Installing Miniconda" >> $LOG_FILE
-bash Miniconda3-latest-Linux-x86_64.sh -b -p $WORKSPACE_DIR/miniconda
-echo "Miniconda installed" >> $LOG_FILE
+LORA_MODELS=(
+    #"https://civitai.com/api/download/models/16576"
+)
 
-# Initialisation de conda
-echo "Initializing conda" >> $LOG_FILE
-eval "$($WORKSPACE_DIR/miniconda/bin/conda shell.bash hook)"
-$WORKSPACE_DIR/miniconda/bin/conda init --all
-echo "Conda initialized" >> $LOG_FILE
+VAE_MODELS=(
+    "https://huggingface.co/stabilityai/sd-vae-ft-ema-original/resolve/main/vae-ft-ema-560000-ema-pruned.safetensors"
+    "https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors"
+    "https://huggingface.co/stabilityai/sdxl-vae/resolve/main/sdxl_vae.safetensors"
+)
 
-# Créez un second script pour les commandes post-initialisation
-cat << EOF > $WORKSPACE_DIR/post_conda_init.sh
-#!/bin/bash
+ESRGAN_MODELS=(
+    "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth"
+    "https://huggingface.co/FacehugmanIII/4x_foolhardy_Remacri/resolve/main/4x_foolhardy_Remacri.pth"
+    "https://huggingface.co/Akumetsu971/SD_Anime_Futuristic_Armor/resolve/main/4x_NMKD-Siax_200k.pth"
+)
 
-# Définir le chemin du workspace
-WORKSPACE_DIR="/workspace/facefusion"
+CONTROLNET_MODELS=(
+    "https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_canny-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_depth-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_hed-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_mlsd-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_normal-fp16.safetensors"
+    "https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_openpose-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_scribble-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_seg-fp16.safetensors"
+    "https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_canny-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_color-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_depth-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_keypose-fp16.safetensors"
+    "https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_openpose-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_seg-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_sketch-fp16.safetensors"
+    #"https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/t2iadapter_style-fp16.safetensors"
+)
 
-LOG_FILE="\$WORKSPACE_DIR/post_conda_init.log"
 
-echo "Starting post_conda_init.sh" >> \$LOG_FILE
-date >> \$LOG_FILE
+### DO NOT EDIT BELOW HERE UNLESS YOU KNOW WHAT YOU ARE DOING ###
 
-# Initialisation de conda
-echo "Initializing conda in post_conda_init.sh" >> \$LOG_FILE
-eval "\$($WORKSPACE_DIR/miniconda/bin/conda shell.bash hook)"
+function provisioning_start() {
+    source /opt/ai-dock/etc/environment.sh
+    source /opt/ai-dock/bin/venv-set.sh webui
 
-# Création de l'environnement facefusion
-echo "Creating facefusion environment" >> \$LOG_FILE
-conda create --prefix \$WORKSPACE_DIR/envs/facefusion python=3.10 -y
-echo "Environment facefusion created" >> \$LOG_FILE
+    DISK_GB_AVAILABLE=$(($(df --output=avail -m "${WORKSPACE}" | tail -n1) / 1000))
+    DISK_GB_USED=$(($(df --output=used -m "${WORKSPACE}" | tail -n1) / 1000))
+    DISK_GB_ALLOCATED=$(($DISK_GB_AVAILABLE + $DISK_GB_USED))
+    provisioning_print_header
+    provisioning_get_pip_packages
+    provisioning_get_extensions
+    provisioning_get_models \
+        "${WORKSPACE}/storage/stable_diffusion/models/ckpt" \
+        "${CHECKPOINT_MODELS[@]}"
+    provisioning_get_models \
+        "${WORKSPACE}/storage/stable_diffusion/models/lora" \
+        "${LORA_MODELS[@]}"
+    provisioning_get_models \
+        "${WORKSPACE}/storage/stable_diffusion/models/controlnet" \
+        "${CONTROLNET_MODELS[@]}"
+    provisioning_get_models \
+        "${WORKSPACE}/storage/stable_diffusion/models/vae" \
+        "${VAE_MODELS[@]}"
+    provisioning_get_models \
+        "${WORKSPACE}/storage/stable_diffusion/models/esrgan" \
+        "${ESRGAN_MODELS[@]}"
+     
+    PLATFORM_FLAGS=""
+    if [[ $XPU_TARGET = "CPU" ]]; then
+        PLATFORM_FLAGS="--use-cpu all --skip-torch-cuda-test --no-half"
+    fi
+    PROVISIONING_FLAGS="--skip-python-version-check --no-download-sd-model --do-not-download-clip --port 11404 --exit"
+    FLAGS_COMBINED="${PLATFORM_FLAGS} $(cat /etc/a1111_webui_flags.conf) ${PROVISIONING_FLAGS}"
+    
+    # Start and exit because webui will probably require a restart
+    cd /opt/stable-diffusion-webui && \
+    source "$WEBUI_VENV/bin/activate"
+    LD_PRELOAD=libtcmalloc.so python launch.py \
+        ${FLAGS_COMBINED}
+    deactivate
 
-# Activation de l'environnement facefusion
-echo "Activating facefusion environment" >> \$LOG_FILE
-source activate \$WORKSPACE_DIR/envs/facefusion
-echo "Environment facefusion activated" >> \$LOG_FILE
+    provisioning_download_and_setup_facefusion
 
-# Installation des paquets nécessaires
-echo "Installing necessary packages" >> \$LOG_FILE
-conda install -y -p \$WORKSPACE_DIR/envs/facefusion conda-forge::cuda-runtime=12.4.1 cudnn=8.9.2.26 conda-forge::gputil=1.4.0
-conda install -y -p \$WORKSPACE_DIR/envs/facefusion conda-forge::openvino=2023.1.0
-echo "Necessary packages installed" >> \$LOG_FILE
+    provisioning_print_end
+}
 
-# Installation des dépendances spécifiques pour install.py
-echo "Installing dependencies for install.py" >> \$LOG_FILE
-pip install -r \$WORKSPACE_DIR/requirements.txt  # Assurez-vous que requirements.txt contient toutes les dépendances nécessaires pour install.py
-echo "Dependencies for install.py installed" >> \$LOG_FILE
+function provisioning_download_and_setup_facefusion() {
+    printf "Downloading facefusion.zip...\n"
+    wget -qnc --content-disposition -O /tmp/facefusion.zip "https://mybucketreggio.s3.amazonaws.com/facefusion.zip"
+    printf "Unzipping facefusion.zip to workspace...\n"
+    unzip -o /tmp/facefusion.zip -d "${WORKSPACE}"
+    printf "Running setup_ot.sh...\n"
+    chmod +x "${WORKSPACE}/facefusion/setup_ot.sh"
+    "${WORKSPACE}/facefusion/setup_ot.sh"
+}
 
-# Installation du paquet onnxruntime pour CUDA 11.8
-echo "Installing onnxruntime" >> \$LOG_FILE
-python \$WORKSPACE_DIR/install.py --onnxruntime cuda-11.8
-echo "onnxruntime installed" >> \$LOG_FILE
+function provisioning_get_pip_packages() {
+    if [[ -n $PIP_PACKAGES ]]; then
+        "$WEBUI_VENV_PIP" install --no-cache-dir ${PIP_PACKAGES[@]}
+    fi
+}
 
-# Mise à jour et installation des paquets Python supplémentaires
-echo "Updating pip" >> \$LOG_FILE
-pip install --upgrade pip
-echo "Installing additional Python packages" >> \$LOG_FILE
-pip install --upgrade bcrypt
-pip install boto3
-pip install passlib[bcrypt]
-pip install mimetype
-echo "Additional Python packages installed" >> \$LOG_FILE
+function provisioning_get_extensions() {
+    for repo in "${EXTENSIONS[@]}"; do
+        dir="${repo##*/}"
+        path="/opt/stable-diffusion-webui/extensions/${dir}"
+        requirements="${path}/requirements.txt"
+        if [[ -d $path ]]; then
+            # Pull only if AUTO_UPDATE
+            if [[ ${AUTO_UPDATE,,} == "true" ]]; then
+                printf "Updating extension: %s...\n" "${repo}"
+                ( cd "$path" && git pull )
+            fi
+            # Always pip install
+            if [[ -e $requirements ]]; then
+                "$WEBUI_VENV_PIP" install --no-cache-dir -r "$requirements"
+            fi
+        else
+            printf "Downloading extension: %s...\n" "${repo}"
+            git clone "${repo}" "${path}" --recursive
+            if [[ -e $requirements ]]; then
+                "$WEBUI_VENV_PIP" install --no-cache-dir -r "${requirements}"
+            fi
+        fi
+    done
+}
 
-# Vérification des installations
-echo "Checking installed packages" >> \$LOG_FILE
-pip freeze >> \$LOG_FILE
+function provisioning_get_models() {
+    if [[ -z $2 ]]; then return 1; fi
+    dir="$1"
+    mkdir -p "$dir"
+    shift
+    if [[ $DISK_GB_ALLOCATED -ge $DISK_GB_REQUIRED ]]; then
+        arr=("$@")
+    else
+        printf "WARNING: Low disk space allocation - Only the first model will be downloaded!\n"
+        arr=("$1")
+    fi
+    
+    printf "Downloading %s model(s) to %s...\n" "${#arr[@]}" "$dir"
+    for url in "${arr[@]}"; do
+        printf "Downloading: %s\n" "${url}"
+        provisioning_download "${url}" "${dir}"
+        printf "\n"
+    done
+}
 
-# Exécution de l'application
-echo "Running app.py" >> \$LOG_FILE
-python \$WORKSPACE_DIR/app.py
-EOF
+function provisioning_print_header() {
+    printf "\n##############################################\n#                                            #\n#          Provisioning container            #\n#                                            #\n#         This will take some time           #\n#                                            #\n# Your container will be ready on completion #\n#                                            #\n##############################################\n\n"
+    if [[ $DISK_GB_ALLOCATED -lt $DISK_GB_REQUIRED ]]; then
+        printf "WARNING: Your allocated disk size (%sGB) is below the recommended %sGB - Some models will not be downloaded\n" "$DISK_GB_ALLOCATED" "$DISK_GB_REQUIRED"
+    fi
+}
 
-# Donner les permissions d'exécution au second script
-chmod +x $WORKSPACE_DIR/post_conda_init.sh
+function provisioning_print_end() {
+    printf "\nProvisioning complete:  Web UI will start now\n\n"
+}
 
-# Exécuter le second script
-echo "Running post_conda_init.sh" >> $LOG_FILE
-$WORKSPACE_DIR/post_conda_init.sh
-echo "post_conda_init.sh completed" >> $LOG_FILE
+# Download from $1 URL to $2 file path
+function provisioning_download() {
+    wget -qnc --content-disposition --show-progress -e dotbytes="${3:-4M}" -P "$2" "$1"
+}
 
-date >> $LOG_FILE
-echo "setup.sh completed" >> $LOG_FILE
+provisioning_start
